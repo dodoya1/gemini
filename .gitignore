@@ -17,3 +17,5 @@ build/
 generated_images/
 prompts/
 .DS_Store
+TODO.md
+memo/
