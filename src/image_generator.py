@@ -17,13 +17,14 @@ Gemini APIを使用して画像生成を行うスクリプト
 from io import BytesIO
 from pathlib import Path
 from typing import Tuple
+import threading
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types  # type: ignore
 from PIL import Image  # type: ignore
 
-from text_to_speech import text_to_speech_and_play_async
+from text_to_speech import text_to_speech, play_audio_async
 
 
 def load_prompt_template(file_path: str) -> str:
@@ -141,19 +142,26 @@ def main():
 
         print("\n=== 生成完了 ===")
         
-        # 画像を先に表示
-        if image:
-            print(f"画像を保存しました: {output_path}")
-            print("画像を表示しています...")
-            image.show()
-        
-        # テキストがある場合は音声を並行再生
+        # テキストがある場合、先に音声を生成
+        audio_file_path = None
         if text:
             print(f"生成されたテキスト: {text}")
             print("テキストを音声に変換中...")
-            audio_path = output_dir / 'generated_text_speech.wav'
-            audio_file, audio_process = text_to_speech_and_play_async(text, str(audio_path))
-            print(f"音声ファイルを保存し、再生中: {audio_file}")
+            audio_file_path = output_dir / 'generated_text_speech.wav'
+            text_to_speech(text, str(audio_file_path))
+            print(f"音声ファイルを保存しました: {audio_file_path}")
+        
+        # 画像表示と音声再生を同時開始
+        if image:
+            print(f"画像を保存しました: {output_path}")
+            print("画像を表示し、音声を再生しています...")
+            
+            # 音声再生を非同期で開始
+            if audio_file_path:
+                play_audio_async(str(audio_file_path))
+            
+            # 画像を表示
+            image.show()
 
     except FileNotFoundError:
         print("エラー: prompts/image_generation.txt ファイルが見つかりません。")
