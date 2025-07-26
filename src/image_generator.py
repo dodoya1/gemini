@@ -23,7 +23,7 @@ from google import genai
 from google.genai import types  # type: ignore
 from PIL import Image  # type: ignore
 
-from text_to_speech import text_to_speech_and_play
+from text_to_speech import text_to_speech_and_play_async
 
 
 def load_prompt_template(file_path: str) -> str:
@@ -140,18 +140,20 @@ def main():
         text, image = generate_and_save_image(final_prompt, str(output_path))
 
         print("\n=== 生成完了 ===")
-        if text:
-            print(f"生成されたテキスト: {text}")
-
-            print("テキストを音声に変換中...")
-            audio_path = output_dir / 'generated_text_speech.wav'
-            text_to_speech_and_play(text, str(audio_path))
-            print(f"音声ファイルを保存し、再生しました: {audio_path}")
-
+        
+        # 画像を先に表示
         if image:
             print(f"画像を保存しました: {output_path}")
             print("画像を表示しています...")
             image.show()
+        
+        # テキストがある場合は音声を並行再生
+        if text:
+            print(f"生成されたテキスト: {text}")
+            print("テキストを音声に変換中...")
+            audio_path = output_dir / 'generated_text_speech.wav'
+            audio_file, audio_process = text_to_speech_and_play_async(text, str(audio_path))
+            print(f"音声ファイルを保存し、再生中: {audio_file}")
 
     except FileNotFoundError:
         print("エラー: prompts/image_generation.txt ファイルが見つかりません。")

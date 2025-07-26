@@ -68,7 +68,7 @@ def text_to_speech(text: str, output_filename: str = "output.wav", voice_name: s
 
 def play_audio(audio_file: str) -> None:
     """
-    音声ファイルを再生する
+    音声ファイルを再生する（ブロッキング）
     
     Args:
         audio_file (str): 再生する音声ファイルのパス
@@ -88,6 +88,31 @@ def play_audio(audio_file: str) -> None:
         print("音声再生コマンドが見つかりません。")
 
 
+def play_audio_async(audio_file: str) -> subprocess.Popen:
+    """
+    音声ファイルを非同期で再生する（ノンブロッキング）
+    
+    Args:
+        audio_file (str): 再生する音声ファイルのパス
+        
+    Returns:
+        subprocess.Popen: 音声再生プロセス
+    """
+    try:
+        if sys.platform.startswith("darwin"):  # macOS
+            return subprocess.Popen(["afplay", audio_file])
+        elif sys.platform.startswith("win32"):  # Windows
+            return subprocess.Popen(["start", audio_file], shell=True)
+        elif sys.platform.startswith("linux"):  # Linux
+            return subprocess.Popen(["aplay", audio_file])
+        else:
+            print(f"お使いのプラットフォーム（{sys.platform}）での音声再生はサポートされていません。")
+            return None
+    except FileNotFoundError:
+        print("音声再生コマンドが見つかりません。")
+        return None
+
+
 def text_to_speech_and_play(text: str, output_filename: str = "output.wav", voice_name: str = "Kore") -> str:
     """
     テキストを音声に変換、保存、再生する
@@ -103,3 +128,20 @@ def text_to_speech_and_play(text: str, output_filename: str = "output.wav", voic
     file_path = text_to_speech(text, output_filename, voice_name)
     play_audio(file_path)
     return file_path
+
+
+def text_to_speech_and_play_async(text: str, output_filename: str = "output.wav", voice_name: str = "Kore") -> tuple[str, subprocess.Popen]:
+    """
+    テキストを音声に変換、保存し、非同期で再生する
+    
+    Args:
+        text (str): 読み上げるテキスト
+        output_filename (str): 出力ファイル名（デフォルト: "output.wav"）
+        voice_name (str): 使用する音声名（デフォルト: "Kore"）
+        
+    Returns:
+        tuple[str, subprocess.Popen]: 保存されたファイルのパスと音声再生プロセス
+    """
+    file_path = text_to_speech(text, output_filename, voice_name)
+    audio_process = play_audio_async(file_path)
+    return file_path, audio_process
