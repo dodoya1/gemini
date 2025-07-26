@@ -23,7 +23,7 @@ from google import genai
 from google.genai import types  # type: ignore
 from PIL import Image  # type: ignore
 
-from text_to_speech import text_to_speech
+from text_to_speech import text_to_speech_and_play
 
 
 def load_prompt_template(file_path: str) -> str:
@@ -145,8 +145,8 @@ def main():
 
             print("テキストを音声に変換中...")
             audio_path = output_dir / 'generated_text_speech.wav'
-            text_to_speech(text, str(audio_path))
-            print(f"音声ファイルを保存しました: {audio_path}")
+            text_to_speech_and_play(text, str(audio_path))
+            print(f"音声ファイルを保存し、再生しました: {audio_path}")
 
         if image:
             print(f"画像を保存しました: {output_path}")

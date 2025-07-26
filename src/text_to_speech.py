@@ -6,6 +6,8 @@ Gemini APIを使用してテキスト読み上げを行うモジュール
 """
 
 import wave
+import subprocess
+import sys
 
 from google import genai
 from google.genai import types  # type: ignore
@@ -62,3 +64,42 @@ def text_to_speech(text: str, output_filename: str = "output.wav", voice_name: s
     save_audio_as_wav(output_filename, audio_data)
 
     return output_filename
+
+
+def play_audio(audio_file: str) -> None:
+    """
+    音声ファイルを再生する
+    
+    Args:
+        audio_file (str): 再生する音声ファイルのパス
+    """
+    try:
+        if sys.platform.startswith("darwin"):  # macOS
+            subprocess.run(["afplay", audio_file], check=True)
+        elif sys.platform.startswith("win32"):  # Windows
+            subprocess.run(["start", audio_file], shell=True, check=True)
+        elif sys.platform.startswith("linux"):  # Linux
+            subprocess.run(["aplay", audio_file], check=True)
+        else:
+            print(f"お使いのプラットフォーム（{sys.platform}）での音声再生はサポートされていません。")
+    except subprocess.CalledProcessError:
+        print(f"音声ファイル {audio_file} の再生に失敗しました。")
+    except FileNotFoundError:
+        print("音声再生コマンドが見つかりません。")
+
+
+def text_to_speech_and_play(text: str, output_filename: str = "output.wav", voice_name: str = "Kore") -> str:
+    """
+    テキストを音声に変換、保存、再生する
+    
+    Args:
+        text (str): 読み上げるテキスト
+        output_filename (str): 出力ファイル名（デフォルト: "output.wav"）
+        voice_name (str): 使用する音声名（デフォルト: "Kore"）
+        
+    Returns:
+        str: 保存されたファイルのパス
+    """
+    file_path = text_to_speech(text, output_filename, voice_name)
+    play_audio(file_path)
+    return file_path
