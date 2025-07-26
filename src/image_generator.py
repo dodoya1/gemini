@@ -13,18 +13,16 @@ Gemini APIを使用して画像生成を行うスクリプト
 - 環境変数に適切なAPI keyの設定が必要です
 - プロンプトは 'prompts/image_generation.txt' から読み込まれます
 """
-
 from io import BytesIO
 from pathlib import Path
 from typing import Tuple
-import threading
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types  # type: ignore
 from PIL import Image  # type: ignore
 
-from text_to_speech import text_to_speech, play_audio_async
+from text_to_speech import play_audio_async, text_to_speech
 
 
 def load_prompt_template(file_path: str) -> str:
@@ -125,7 +123,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     try:
-        # ユーザーから場所の入力を受け取る
+        # ユーザーからの入力(行きたい場所)を受け取る
         user_location = get_user_location()
 
         # プロンプトテンプレートを読み込む
@@ -141,8 +139,8 @@ def main():
         text, image = generate_and_save_image(final_prompt, str(output_path))
 
         print("\n=== 生成完了 ===")
-        
-        # テキストがある場合、先に音声を生成
+
+        # テキストがある場合、音声を生成
         audio_file_path = None
         if text:
             print(f"生成されたテキスト: {text}")
@@ -150,16 +148,16 @@ def main():
             audio_file_path = output_dir / 'generated_text_speech.wav'
             text_to_speech(text, str(audio_file_path))
             print(f"音声ファイルを保存しました: {audio_file_path}")
-        
+
         # 画像表示と音声再生を同時開始
         if image:
             print(f"画像を保存しました: {output_path}")
             print("画像を表示し、音声を再生しています...")
-            
+
             # 音声再生を非同期で開始
             if audio_file_path:
                 play_audio_async(str(audio_file_path))
-            
+
             # 画像を表示
             image.show()
 
