@@ -24,18 +24,52 @@ from google.genai import types  # type: ignore
 from PIL import Image  # type: ignore
 
 
-def load_prompt(file_path: str) -> str:
+def load_prompt_template(file_path: str) -> str:
     """
-    プロンプトファイルを読み込む
+    プロンプトテンプレートファイルを読み込む
 
     Args:
-        file_path (str): プロンプトファイルのパス
+        file_path (str): プロンプトテンプレートファイルのパス
 
     Returns:
-        str: プロンプトの内容
+        str: プロンプトテンプレートの内容
     """
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         return file.read().strip()
+
+
+def create_prompt(template: str, location: str) -> str:
+    """
+    プロンプトテンプレートにユーザーの入力した場所を挿入する
+
+    Args:
+        template (str): プロンプトテンプレート
+        location (str): ユーザーが入力した場所
+
+    Returns:
+        str: 完成したプロンプト
+    """
+    return template + f"\n\n{location}"
+
+
+def get_user_location() -> str:
+    """
+    ユーザーから場所の入力を受け取る
+
+    Returns:
+        str: ユーザーが入力した場所
+    """
+    print("どこの風景写真を生成したいですか？")
+    print("例: 富士山の頂上から見た日の出")
+    print("例: 火星の赤い大地")
+    print("例: オーロラが輝く北極の夜空")
+    print()
+
+    while True:
+        location = input("どこに行きたい？: ").strip()
+        if location:
+            return location
+        print("場所を入力してください。")
 
 
 def generate_and_save_image(prompt: str, output_path: str) -> Tuple[str, Image.Image]:
@@ -49,6 +83,8 @@ def generate_and_save_image(prompt: str, output_path: str) -> Tuple[str, Image.I
     Returns:
         Tuple[str, Image.Image]: 生成されたテキストと画像のタプル
     """
+    print("\n画像を生成中...")
+
     client = genai.Client()
 
     response = client.models.generate_content(
@@ -85,16 +121,34 @@ def main():
     output_dir = Path('generated_images')
     output_dir.mkdir(exist_ok=True)
 
-    prompt = load_prompt('prompts/image_generation.txt')
-    output_path = output_dir / 'gemini-native-image.png'
+    try:
+        # ユーザーから場所の入力を受け取る
+        user_location = get_user_location()
 
-    text, image = generate_and_save_image(prompt, str(output_path))
+        # プロンプトテンプレートを読み込む
+        prompt_template = load_prompt_template('prompts/image_generation.txt')
 
-    if text:
-        print(text)
-    if image:
-        print(f"画像を保存しました: {output_path}")
-        image.show()
+        # プロンプトテンプレートにユーザーの入力を挿入
+        final_prompt = create_prompt(prompt_template, user_location)
+
+        # 出力ファイルパスを生成
+        output_path = output_dir / 'gemini-native-image.png'
+
+        # 画像生成と保存
+        text, image = generate_and_save_image(final_prompt, str(output_path))
+
+        print("\n=== 生成完了 ===")
+        if text:
+            print(f"生成されたテキスト: {text}")
+        if image:
+            print(f"画像を保存しました: {output_path}")
+            print("画像を表示しています...")
+            image.show()
+
+    except FileNotFoundError:
+        print("エラー: prompts/image_generation.txt ファイルが見つかりません。")
+    except Exception as e:
+        print(f"エラーが発生しました: {e}")
 
 
 if __name__ == "__main__":
