@@ -51,7 +51,7 @@ gemini/
 ├── prompts/                # プロンプトファイル格納ディレクトリ
 │   ├── text_generation.txt   # テキスト生成用プロンプト
 │   └── image_generation.txt  # 画像生成用プロンプト
-├── generated_images/       # 生成画像・音声ファイル保存ディレクトリ
+├── outputs/                # 生成ファイル保存ディレクトリ
 │   ├── gemini-native-image.png  # 生成された画像
 │   └── generated_text_speech.wav # 生成された音声
 └── src/                   # ソースコードディレクトリ
@@ -94,8 +94,8 @@ python src/image_generator.py
 
 **出力**：
 
-- 画像：`generated_images/gemini-native-image.png`
-- 音声：`generated_images/generated_text_speech.wav`
+- 画像：`outputs/generated-image.png`
+- 音声：`outputs/generated-speech.wav`
 
 ### 音声合成（単体利用）
 

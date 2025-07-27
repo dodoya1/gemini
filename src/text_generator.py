@@ -1,5 +1,5 @@
 """
-Gemini APIを使用してテキスト生成を行うスクリプト
+Gemini APIを使用してテキスト生成を行うスクリプト（リファクタ済み）
 
 このスクリプトは、Google Cloud の Gemini API を使用して、
 テキストプロンプトに対する応答を生成します。Gemini-2.5-Flash モデルを
@@ -13,61 +13,31 @@ https://ai.google.dev/gemini-api/docs/text-generation?hl=ja
 - 環境変数に適切なAPI keyの設定が必要です
 """
 
-from typing import Optional
-
-from dotenv import load_dotenv
-from google import genai
-
-
-def generate_text_response(prompt: str, model: str = "gemini-2.5-flash") -> Optional[str]:
-    """
-    Geminiを使用してテキスト応答を生成する
-
-    Args:
-        prompt (str): 生成のためのプロンプト
-        model (str, optional): 使用するモデル名. デフォルトは "gemini-2.5-flash"
-
-    Returns:
-        Optional[str]: 生成されたテキスト。エラー時はNone
-    """
-    client = genai.Client()
-
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt
-        )
-        return response.text
-    except Exception as e:
-        print(f"エラーが発生しました: {e}")
-        return None
-
-
-def load_prompt(file_path: str) -> str:
-    """
-    プロンプトファイルを読み込む
-
-    Args:
-        file_path (str): プロンプトファイルのパス
-
-    Returns:
-        str: プロンプトの内容
-    """
-    with open(file_path, 'r') as file:
-        return file.read().strip()
+from api.gemini_client import GeminiClient
+from utils.prompt_loader import load_prompt_file
 
 
 def main():
     """メイン処理を実行する"""
-    load_dotenv()
+    try:
+        # Gemini APIクライアントの取得
+        client = GeminiClient()
 
-    prompt = load_prompt('prompts/text_generation.txt')
-    response_text = generate_text_response(prompt)
+        # プロンプトファイルの読み込み
+        prompt = load_prompt_file('prompts/text_generation.txt')
 
-    if response_text:
-        print(response_text)
-    else:
-        print("テキスト生成に失敗しました。")
+        # テキスト生成
+        response_text = client.generate_text(prompt)
+
+        if response_text:
+            print(response_text)
+        else:
+            print("テキスト生成に失敗しました。")
+
+    except FileNotFoundError as e:
+        print(f"ファイルエラー: {e}")
+    except Exception as e:
+        print(f"予期しないエラーが発生しました: {e}")
 
 
 if __name__ == "__main__":

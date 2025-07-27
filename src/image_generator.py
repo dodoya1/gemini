@@ -1,5 +1,5 @@
 """
-Gemini APIを使用して画像生成を行うスクリプト
+Gemini APIを使用して画像生成を行うスクリプト（リファクタ済み）
 
 このスクリプトは、Google Cloud の Gemini API を使用して、
 テキストプロンプトから画像を生成します。Gemini-2.0-Flash-Preview モデルを使用し、
@@ -13,44 +13,12 @@ Gemini APIを使用して画像生成を行うスクリプト
 - 環境変数に適切なAPI keyの設定が必要です
 - プロンプトは 'prompts/image_generation.txt' から読み込まれます
 """
-from io import BytesIO
-from pathlib import Path
-from typing import Tuple
 
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types  # type: ignore
-from PIL import Image  # type: ignore
-
-from text_to_speech import play_audio_async, text_to_speech
-
-
-def load_prompt_template(file_path: str) -> str:
-    """
-    プロンプトテンプレートファイルを読み込む
-
-    Args:
-        file_path (str): プロンプトテンプレートファイルのパス
-
-    Returns:
-        str: プロンプトテンプレートの内容
-    """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        return file.read().strip()
-
-
-def create_prompt(template: str, location: str) -> str:
-    """
-    プロンプトテンプレートにユーザーの入力した場所を挿入する
-
-    Args:
-        template (str): プロンプトテンプレート
-        location (str): ユーザーが入力した場所
-
-    Returns:
-        str: 完成したプロンプト
-    """
-    return template + f"\n\n{location}"
+from api.gemini_client import GeminiClient
+from utils.audio_player import play_audio_async
+from utils.config import Config
+from utils.file_handler import save_audio_as_wav, save_image
+from utils.prompt_loader import create_prompt_with_input
 
 
 def get_user_location() -> str:
@@ -73,98 +41,59 @@ def get_user_location() -> str:
         print("場所を入力してください。")
 
 
-def generate_and_save_image(prompt: str, output_path: str) -> Tuple[str, Image.Image]:
-    """
-    Geminiを使用して画像を生成し、保存する
-
-    Args:
-        prompt (str): 画像生成用のプロンプト
-        output_path (str): 生成した画像の保存先パス
-
-    Returns:
-        Tuple[str, Image.Image]: 生成されたテキストと画像のタプル
-    """
-    print("\n画像を生成中...")
-
-    client = genai.Client()
-
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-preview-image-generation",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=['TEXT', 'IMAGE']
-        )
-    )
-
-    text_response = ""
-    generated_image = None
-
-    # レスポンスの各パートをチェック（テキストと画像の両方が含まれる可能性がある）
-    for part in response.candidates[0].content.parts:
-        # テキストパートの処理
-        if part.text is not None:
-            text_response = part.text
-        # 画像パートの処理
-        elif part.inline_data is not None:
-            # バイナリデータからPIL Image オブジェクトを作成
-            generated_image = Image.open(BytesIO((part.inline_data.data)))
-            # 指定されたパスに画像を保存
-            generated_image.save(output_path)
-
-    return text_response, generated_image
-
-
 def main():
     """メイン処理を実行する"""
-    load_dotenv()
-
-    # 画像保存用ディレクトリの作成（存在しない場合）
-    output_dir = Path('generated_images')
-    output_dir.mkdir(exist_ok=True)
-
     try:
+        # 設定とクライアントの初期化
+        config = Config()
+        client = GeminiClient()
+
         # ユーザーからの入力(行きたい場所)を受け取る
         user_location = get_user_location()
 
-        # プロンプトテンプレートを読み込む
-        prompt_template = load_prompt_template('prompts/image_generation.txt')
+        # プロンプト作成
+        final_prompt = create_prompt_with_input(
+            'prompts/image_generation.txt', user_location)
 
-        # プロンプトテンプレートにユーザーの入力を挿入
-        final_prompt = create_prompt(prompt_template, user_location)
+        # 画像・テキスト生成
+        print("\n画像を生成中...")
+        text, image = client.generate_image_and_text(final_prompt)
 
-        # 出力ファイルパスを生成
-        output_path = output_dir / 'gemini-native-image.png'
-
-        # 画像生成と保存
-        text, image = generate_and_save_image(final_prompt, str(output_path))
+        if not image:
+            print("画像生成に失敗しました。")
+            return
 
         print("\n=== 生成完了 ===")
 
-        # テキストがある場合、音声を生成
+        # 画像保存
+        image_path = config.get_image_output_path()
+        save_image(image, str(image_path))
+
+        # 音声生成・保存
         audio_file_path = None
         if text:
             print(f"生成されたテキスト: {text}")
             print("テキストを音声に変換中...")
-            audio_file_path = output_dir / 'generated_text_speech.wav'
-            text_to_speech(text, str(audio_file_path))
-            print(f"音声ファイルを保存しました: {audio_file_path}")
+
+            audio_data = client.generate_speech(text)
+            if audio_data:
+                audio_file_path = config.get_audio_output_path()
+                save_audio_as_wav(audio_data, str(audio_file_path))
 
         # 画像表示と音声再生を同時開始
-        if image:
-            print(f"画像を保存しました: {output_path}")
-            print("画像を表示し、音声を再生しています...")
+        print("画像を表示し、音声を再生しています...")
 
-            # 音声再生を非同期で開始
-            if audio_file_path:
-                play_audio_async(str(audio_file_path))
+        # 音声再生を非同期で開始
+        if audio_file_path:
+            play_audio_async(str(audio_file_path))
 
-            # 画像を表示
-            image.show()
+        # 画像を表示
+        image.show()
 
-    except FileNotFoundError:
-        print("エラー: prompts/image_generation.txt ファイルが見つかりません。")
+    except FileNotFoundError as e:
+        print(f"ファイルエラー: {e}")
     except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        print(f"予期しないエラーが発生しました: {e}")
 
 
 if __name__ == "__main__":

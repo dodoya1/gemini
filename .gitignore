@@ -14,7 +14,7 @@ build/
 # Environment variables
 .env
 
-generated_images/
+outputs/
 .DS_Store
 TODO.md
 memo/
