@@ -8,6 +8,8 @@ Google Gemini API を使用したマルチモーダル AI アプリケーショ�
 - **画像生成**: Gemini 2.0 Flash Preview モデルを使用した高品質な風景写真生成
 - **音声合成**: Gemini 2.5 Flash Preview TTS モデルによる日本語音声合成
 - **マルチモーダル体験**: テキスト、画像、音声を組み合わせた統合体験
+- **統一 API クライアント**: シングルトンパターンによる効率的な API 管理
+- **モジュラー設計**: 機能別に分離された保守性の高いコード構成
 - **カスタマイズ可能なプロンプトシステム**: 柔軟なプロンプト管理
 
 ## 環境セットアップ
@@ -44,20 +46,30 @@ echo "GEMINI_API_KEY=your-api-key-here" > .env
 
 ```
 gemini/
-├── .env                      # 環境変数設定ファイル
-├── .venv/                   # Python仮想環境
-├── README.md               # プロジェクト説明書
-├── requirements.txt        # 依存パッケージ一覧
-├── prompts/                # プロンプトファイル格納ディレクトリ
-│   ├── text_generation.txt   # テキスト生成用プロンプト
-│   └── image_generation.txt  # 画像生成用プロンプト
-├── outputs/                # 生成ファイル保存ディレクトリ
-│   ├── gemini-native-image.png  # 生成された画像
-│   └── generated_text_speech.wav # 生成された音声
-└── src/                   # ソースコードディレクトリ
-    ├── text_generator.py     # テキスト生成モジュール
-    ├── image_generator.py    # 画像生成モジュール
-    └── text_to_speech.py     # 音声合成モジュール
+├── .env                         # 環境変数設定ファイル
+├── .venv/                      # Python仮想環境
+├── README.md                   # プロジェクト説明書
+├── requirements.txt            # 依存パッケージ一覧
+├── docs/                       # ドキュメント
+│   └── image_generator_sequence.md  # 画像生成のシーケンス図
+├── prompts/                    # プロンプトファイル格納ディレクトリ
+│   ├── text_generation.txt    # テキスト生成用プロンプト
+│   └── image_generation.txt   # 画像生成用プロンプト
+├── outputs/                    # 生成ファイル保存ディレクトリ
+│   ├── generated-image.png     # 生成された画像
+│   └── generated-speech.wav    # 生成された音声
+└── src/                        # ソースコードディレクトリ
+    ├── api/                    # API関連モジュール
+    │   ├── __init__.py
+    │   └── gemini_client.py    # Gemini APIクライアント（統一）
+    ├── utils/                  # ユーティリティモジュール
+    │   ├── __init__.py
+    │   ├── audio_player.py     # 音声再生機能
+    │   ├── config.py           # 設定管理
+    │   ├── file_handler.py     # ファイル操作
+    │   └── prompt_loader.py    # プロンプト読み込み
+    ├── image_generator.py      # 画像生成モジュール
+    └── text_generator.py       # テキスト生成モジュール
 ```
 
 ## 使用方法
@@ -97,20 +109,6 @@ python src/image_generator.py
 - 画像：`outputs/generated-image.png`
 - 音声：`outputs/generated-speech.wav`
 
-### 音声合成（単体利用）
-
-`text_to_speech.py`モジュールは独立して利用可能：
-
-```python
-from src.text_to_speech import text_to_speech, play_audio_async
-
-# テキストを音声ファイルに変換
-text_to_speech("こんにちは、世界！", "output.wav")
-
-# 音声を非同期再生
-play_audio_async("output.wav")
-```
-
 ## 依存パッケージ
 
 - **google-genai**: Gemini API クライアントライブラリ
@@ -136,6 +134,26 @@ play_audio_async("output.wav")
 - **音声品質**: 24kHz, 16-bit, モノラル
 - **音声モデル**: "Kore"（日本語対応）
 - **出力形式**: WAV 形式
+
+## アーキテクチャの特徴
+
+### 統一 API クライアント
+
+- `GeminiClient`クラスによるシングルトンパターンの実装
+- 全ての生成機能（テキスト、画像、音声）を統一的に管理
+- エラーハンドリングとリトライ処理の統合
+
+### モジュラー設計
+
+- **API 層**: `src/api/` - Gemini API との通信処理
+- **ユーティリティ層**: `src/utils/` - 共通機能（設定、ファイル処理、音声再生）
+- **アプリケーション層**: `src/` - メイン機能（画像生成、テキスト生成）
+
+### 設定管理
+
+- 環境変数の統一管理
+- 出力ディレクトリの自動作成と管理
+- プラットフォーム依存処理の抽象化
 
 ## 注意事項
 
